@@ -170,7 +170,7 @@ Every change is checked for leaked credentials with
 - **Supply-chain hardening.** The CI job pins `actions/checkout` to a commit SHA and
   verifies the gitleaks release binary against its published checksum.
 - **Leaked-secret policy.** A secret that ever reaches GitHub is treated as
-  compromised: it is rotated first, then removed from the history.
+  compromised and rotated at the source immediately.
 
 ---
 

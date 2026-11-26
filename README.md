@@ -1,5 +1,23 @@
 ﻿# Droplet
 
+
+<div align="center">
+
+![Droplet](public/images/lp-hero-image-480x480.png)
+
+_Smart AI Assistant powered by OpenAI_
+
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://droplet.jwd-apps.com)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+[![MUI](https://img.shields.io/badge/MUI-7-007FFF)](https://mui.com/)
+
+</div>
+
+---
+
+
+
 **Your AI assistant, your way.**
 
 Droplet is a smart AI chatbot with 6 specialized personas — each with its own personality, expertise, and conversational style. Choose the assistant that fits your need, and start a real conversation.
@@ -120,10 +138,16 @@ npm run build     # production build
 
 ---
 
+## Author
+
+Built with ❤️ by [FCI Devel](https://fcidevel.com)
+
+---
+
 ## License
 
-Copyright (c) 2026 JordacheWD. All rights reserved.
+This source code is published for reference and evaluation purposes only.
 
-Source-available for portfolio review and technical study — **not open source**.
-You may read, study, and reference this code; you may not reuse, redistribute, or
-deploy it. See [LICENSE](LICENSE) for the full terms.
+> No permission is granted to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of this software, in whole or in part.
+
+See [LICENSE](LICENSE) for the full terms.

@@ -115,11 +115,10 @@ function createChatRule({
 }
 
 const TITLE_POLICY_RULE: ModelPolicyRule = {
-  model: "gpt-4.1-nano",
-  fallbackModel: "gpt-4o-mini",
+  model: "gpt-4o-mini",
   maxInputTokens: 1_200,
   maxOutputTokens: 20,
-  notes: "Always use the cheapest model for title generation.",
+  notes: "Always use the cheapest available model for title generation.",
 };
 const DEFAULT_TTS_MODEL = "gpt-4o-mini-tts";
 const LITE_IMAGE_MODEL = "gpt-image-1-mini";
@@ -138,7 +137,7 @@ export const MODEL_POLICY_MATRIX = {
       taskClasses: {
         simple: createChatRule({
           model: "gpt-4o-mini",
-          fallbackModel: "gpt-4.1-nano",
+          fallbackModel: "gpt-4o-mini",
           maxInputTokens: 32_000,
           maxOutputTokens: 4_096,
           notes:
@@ -146,7 +145,7 @@ export const MODEL_POLICY_MATRIX = {
         }),
         standard: createChatRule({
           model: "gpt-4o-mini",
-          fallbackModel: "gpt-4.1-nano",
+          fallbackModel: "gpt-4o-mini",
           maxInputTokens: 64_000,
           maxOutputTokens: 8_192,
           notes:
@@ -154,7 +153,7 @@ export const MODEL_POLICY_MATRIX = {
         }),
         complex: createChatRule({
           model: "gpt-4o-mini",
-          fallbackModel: "gpt-4.1-nano",
+          fallbackModel: "gpt-4o-mini",
           maxInputTokens: 128_000,
           maxOutputTokens: 16_384,
           notes:
@@ -268,11 +267,11 @@ export const MODEL_POLICY_MATRIX = {
         }),
         complex: createChatRule({
           model: "gpt-4.1",
-          fallbackModel: "gpt-4.1-mini",
+          fallbackModel: "gpt-4o-mini",
           maxInputTokens: 500_000,
           maxOutputTokens: 32_768,
           notes:
-            "Premium complex chat defaults to gpt-4.1, downgrades to gpt-4.1-mini, and only upgrades to gpt-5.4 when explicitly requested.",
+            "Premium complex chat defaults to gpt-4.1, downgrades to gpt-4o-mini, and only upgrades to gpt-5.4 when explicitly requested.",
         }),
       },
     },

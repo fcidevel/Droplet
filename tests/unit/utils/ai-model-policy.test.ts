@@ -32,9 +32,88 @@ describe("ai-model-policy", () => {
     });
 
     expect(policy.taskClass).toBe("utility");
-    expect(policy.model).toBe("gpt-4.1-nano");
-    expect(policy.fallbackModel).toBe("gpt-4o-mini");
+    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.fallbackModel).toBeUndefined();
     expect(policy.hardBlocked).toBe(false);
+  });
+
+  it("never resolves a model that OpenAI no longer serves to this project", () => {
+    // gpt-4.1-nano was shut down on 2026-10-23; gpt-4.1-mini is not enabled
+    // for the project (and shuts down on 2027-01-14).
+    const unavailableModels = ["gpt-4.1-nano", "gpt-4.1-mini"];
+    const plans = [litePlanTier, proPlanTier, premiumPlanTier];
+    const features = [
+      "title_generation",
+      "chat",
+      "image_generation",
+      "audio_generation",
+    ] as const;
+    const taskClasses = [
+      "utility",
+      "simple",
+      "standard",
+      "complex",
+      "preview",
+      "final",
+    ] as const;
+    const signals = [
+      {},
+      { retryAttempt: 1 },
+      { budgetState: "soft_limit_reached" as const },
+      { highLatency: true },
+      { explicitPremium: true },
+      { audioMode: "tts" as const },
+      { audioMode: "audio_in_out" as const },
+    ];
+    const resolvedModels = new Set<string>();
+
+    for (const plan of plans) {
+      for (const feature of features) {
+        for (const taskClass of taskClasses) {
+          for (const signal of signals) {
+            const policy = resolveModelPolicy({
+              plan,
+              feature,
+              taskClass,
+              ...signal,
+            });
+            resolvedModels.add(policy.model);
+            if (policy.fallbackModel) {
+              resolvedModels.add(policy.fallbackModel);
+            }
+          }
+        }
+      }
+    }
+
+    for (const model of unavailableModels) {
+      expect(resolvedModels).not.toContain(model);
+    }
+  });
+
+  it("keeps lite chat on gpt-4o-mini when retried, as no cheaper model is available", () => {
+    const policy = resolveModelPolicy({
+      plan: litePlanTier,
+      feature: "chat",
+      taskClass: "standard",
+      retryAttempt: 1,
+    });
+
+    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.wasDowngraded).toBe(false);
+  });
+
+  it("downgrades premium complex chat to gpt-4o-mini on retry", () => {
+    const policy = resolveModelPolicy({
+      plan: premiumPlanTier,
+      feature: "chat",
+      taskClass: "complex",
+      retryAttempt: 1,
+    });
+
+    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.wasDowngraded).toBe(true);
+    expect(policy.downgradeReasons).toEqual(["retry_attempt"]);
   });
 
   it("hard blocks requests when budget hard limit is reached", () => {

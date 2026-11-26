@@ -22,6 +22,11 @@ describe("persona-prompts", () => {
     expect(PERSONA_AUDIO_STYLE_HINTS.teacher).toContain("teaching style");
   });
 
+  it("maps the gpt-6 chat models to the families of the models they replace", () => {
+    expect(resolvePromptModelFamily("gpt-6-luna")).toBe("mini");
+    expect(resolvePromptModelFamily("gpt-6-sol")).toBe("standard");
+  });
+
   it("selects model-family prompt settings when the model is known", () => {
     const promptConfig = resolvePersonaPromptConfig({
       personaId: "developer",

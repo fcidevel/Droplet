@@ -96,7 +96,7 @@ const openAiClient = new OpenAI({
 });
 
 const ttsModel = "gpt-4o-mini-tts";
-const fullAudioModels = ["gpt-audio-mini", "gpt-audio-1.5"];
+const fullAudioModels = ["gpt-audio-1.5"];
 const ttsInputText =
   "Droplet live verification. This confirms text to speech output is working.";
 const audioInOutPrompt = "Say: Audio model verification successful, then stop.";

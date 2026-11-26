@@ -70,7 +70,7 @@ const client = new OpenAI({
 });
 
 const prompt = "A flat icon of a blue water droplet on a white background.";
-const modelsToProbe = ["gpt-image-1-mini", "gpt-image-1.5", "gpt-image-1"];
+const modelsToProbe = ["gpt-image-2.6-flare", "gpt-image-2.6-sunburst"];
 
 async function probeModel(model, withB64ResponseFormat) {
   const input = {

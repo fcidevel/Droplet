@@ -639,6 +639,7 @@ async function runChatCompletion({
     {
       model: chatPolicy.model,
       temperature: chatRequestSettings.temperature,
+      reasoning_effort: chatPolicy.reasoningEffort,
       max_completion_tokens: chatRequestSettings.maxCompletionTokens,
       messages: chatRequestSettings.messages,
       tools: tools.length > 0 ? (tools as ChatCompletionTool[]) : undefined,
@@ -742,6 +743,7 @@ async function runStreamingChatCompletion({
     {
       model: chatPolicy.model,
       temperature: chatRequestSettings.temperature,
+      reasoning_effort: chatPolicy.reasoningEffort,
       max_completion_tokens: chatRequestSettings.maxCompletionTokens,
       messages: chatRequestSettings.messages,
       tools: tools.length > 0 ? (tools as ChatCompletionTool[]) : undefined,

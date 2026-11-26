@@ -105,6 +105,7 @@ type TestPolicy = {
   notes?: string;
   maxInputTokens?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: "none";
 };
 
 function createEntitlements(
@@ -302,6 +303,41 @@ describe("generateResponse", () => {
         model: "gpt-4.1",
       }),
     ]);
+  });
+
+  it("sends the chat policy's reasoning effort alongside temperature", async () => {
+    resolveModelPolicyMock.mockImplementation(() =>
+      createPolicy({ model: "gpt-6-sol", reasoningEffort: "none" }),
+    );
+    createChatCompletionMock.mockResolvedValue({
+      usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+      choices: [{ message: { role: "assistant", content: "Hello" } }],
+    });
+
+    await generateResponse(createResponseRequest());
+
+    expect(createChatCompletionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-6-sol",
+        temperature: 0.3,
+        reasoning_effort: "none",
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("omits reasoning effort for models that do not need it", async () => {
+    createChatCompletionMock.mockResolvedValue({
+      usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+      choices: [{ message: { role: "assistant", content: "Hello" } }],
+    });
+
+    await generateResponse(createResponseRequest());
+
+    const [request] = createChatCompletionMock.mock.calls[0] as [
+      Record<string, unknown>,
+    ];
+    expect(request.reasoning_effort).toBeUndefined();
   });
 
   it("replaces internal download image URLs with pre-signed URLs before chat completion", async () => {
@@ -878,6 +914,35 @@ describe("generateStreamingResponse", () => {
         tokensOut: 5,
       }),
     ]);
+  });
+
+  it("sends the chat policy's reasoning effort with streamed requests", async () => {
+    resolveModelPolicyMock.mockReturnValue(
+      createPolicy({ model: "gpt-6-luna", reasoningEffort: "none" }),
+    );
+    streamChatCompletionMock.mockReturnValue({
+      on: vi.fn(),
+      finalChatCompletion: vi.fn(async () => ({
+        usage: undefined,
+        choices: [{ message: { role: "assistant", content: "Hi" } }],
+      })),
+      totalUsage: vi.fn(async () => ({
+        prompt_tokens: 3,
+        completion_tokens: 1,
+        total_tokens: 4,
+      })),
+    });
+
+    await generateStreamingResponse(createStreamingRequest());
+
+    expect(streamChatCompletionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-6-luna",
+        temperature: 0.3,
+        reasoning_effort: "none",
+      }),
+      expect.anything(),
+    );
   });
 
   it("signals media generation start and end callbacks during streaming tool execution", async () => {

@@ -265,10 +265,12 @@ export const PERSONA_PROMPTS = {
 const MODEL_TO_PROMPT_FAMILY: Partial<
   Record<string, PersonaPromptModelFamily>
 > = {
-  "gpt-4.1-nano": "nano",
+  "gpt-6-luna": "mini",
+  "gpt-6-sol": "standard",
+  "gpt-5.4": "reasoning",
+  // Retiring models selected by admin overrides saved before the migration.
   "gpt-4o-mini": "mini",
   "gpt-4.1": "standard",
-  "gpt-5.4": "reasoning",
 };
 
 export function resolvePromptModelFamily(

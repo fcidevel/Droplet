@@ -164,6 +164,35 @@ describe("generateTitle", () => {
     });
   });
 
+  it("sends the policy's reasoning effort with the title request", async () => {
+    resolveModelPolicyMock.mockReturnValue({
+      model: "gpt-6-luna",
+      reasoningEffort: "none",
+      hardBlocked: false,
+      notes: undefined,
+      maxInputTokens: 1200,
+      maxOutputTokens: 20,
+    });
+    createCompletionMock.mockResolvedValue({
+      usage: { prompt_tokens: 12, completion_tokens: 5, total_tokens: 17 },
+      choices: [{ message: { content: "Basil Care Indoors" } }],
+    });
+
+    await generateTitle(
+      [createTestMessage({ role: "user", whois: "user", content: "Basil?" })],
+      "Lite",
+      "developer",
+    );
+
+    expect(createCompletionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-6-luna",
+        reasoning_effort: "none",
+        max_completion_tokens: 20,
+      }),
+    );
+  });
+
   it("delegates hard-blocked policy failures to handleError", async () => {
     resolveModelPolicyMock.mockReturnValue({
       model: "gpt-4.1-nano",

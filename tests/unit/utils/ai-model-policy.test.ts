@@ -32,15 +32,27 @@ describe("ai-model-policy", () => {
     });
 
     expect(policy.taskClass).toBe("utility");
-    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.model).toBe("gpt-6-luna");
     expect(policy.fallbackModel).toBeUndefined();
+    expect(policy.reasoningEffort).toBe("none");
     expect(policy.hardBlocked).toBe(false);
   });
 
-  it("never resolves a model that OpenAI no longer serves to this project", () => {
-    // gpt-4.1-nano was shut down on 2026-10-23; gpt-4.1-mini is not enabled
-    // for the project (and shuts down on 2027-01-14).
-    const unavailableModels = ["gpt-4.1-nano", "gpt-4.1-mini"];
+  it("never resolves a retired or retiring model (TTS excepted)", () => {
+    // OpenAI shutdowns: gpt-4.1-nano and gpt-image-1 2026-10-23; gpt-image-1-mini
+    // and gpt-image-1.5 2026-12-01; gpt-4o-mini, gpt-4.1 and gpt-4.1-mini
+    // 2027-01-14; gpt-audio-mini 2027-01-20. gpt-4o-mini-tts (2027-01-06) has
+    // no Speech API successor and stays until the TTS path moves.
+    const unavailableModels = [
+      "gpt-4.1-nano",
+      "gpt-4.1-mini",
+      "gpt-4.1",
+      "gpt-4o-mini",
+      "gpt-image-1",
+      "gpt-image-1-mini",
+      "gpt-image-1.5",
+      "gpt-audio-mini",
+    ];
     const plans = [litePlanTier, proPlanTier, premiumPlanTier];
     const features = [
       "title_generation",
@@ -91,7 +103,7 @@ describe("ai-model-policy", () => {
     }
   });
 
-  it("keeps lite chat on gpt-4o-mini when retried, as no cheaper model is available", () => {
+  it("keeps lite chat on gpt-6-luna when retried, as no cheaper model is available", () => {
     const policy = resolveModelPolicy({
       plan: litePlanTier,
       feature: "chat",
@@ -99,11 +111,11 @@ describe("ai-model-policy", () => {
       retryAttempt: 1,
     });
 
-    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.model).toBe("gpt-6-luna");
     expect(policy.wasDowngraded).toBe(false);
   });
 
-  it("downgrades premium complex chat to gpt-4o-mini on retry", () => {
+  it("downgrades premium complex chat to gpt-6-luna on retry", () => {
     const policy = resolveModelPolicy({
       plan: premiumPlanTier,
       feature: "chat",
@@ -111,7 +123,7 @@ describe("ai-model-policy", () => {
       retryAttempt: 1,
     });
 
-    expect(policy.model).toBe("gpt-4o-mini");
+    expect(policy.model).toBe("gpt-6-luna");
     expect(policy.wasDowngraded).toBe(true);
     expect(policy.downgradeReasons).toEqual(["retry_attempt"]);
   });
@@ -168,9 +180,10 @@ describe("ai-model-policy", () => {
       explicitPremium: true,
     });
 
-    expect(normalPolicy.model).toBe("gpt-4.1");
+    expect(normalPolicy.model).toBe("gpt-6-sol");
     expect(upgradedPolicy.model).toBe("gpt-5.4");
-    expect(upgradedPolicy.fallbackModel).toBe("gpt-4.1");
+    expect(upgradedPolicy.fallbackModel).toBe("gpt-6-sol");
+    expect(upgradedPolicy.reasoningEffort).toBeUndefined();
   });
 
   it("applies downgrade signals for chat when a fallback is available", () => {
@@ -188,11 +201,11 @@ describe("ai-model-policy", () => {
       retryAttempt: 1,
     });
 
-    expect(simpleProPolicy.model).toBe("gpt-4o-mini");
+    expect(simpleProPolicy.model).toBe("gpt-6-luna");
     expect(simpleProPolicy.wasDowngraded).toBe(true);
     expect(simpleProPolicy.downgradeReasons).toEqual(["simple_task"]);
 
-    expect(pressuredPremiumPolicy.model).toBe("gpt-4o-mini");
+    expect(pressuredPremiumPolicy.model).toBe("gpt-6-luna");
     expect(pressuredPremiumPolicy.wasDowngraded).toBe(true);
     expect(pressuredPremiumPolicy.downgradeReasons).toEqual([
       "soft_limit_reached",
@@ -209,7 +222,7 @@ describe("ai-model-policy", () => {
       retryAttempt: 2,
     });
 
-    expect(policy.model).toBe("gpt-audio-mini");
+    expect(policy.model).toBe("gpt-audio-1.5");
     expect(policy.wasDowngraded).toBe(false);
     expect(policy.downgradeReasons).toEqual([]);
     expect(policy.notes).toContain("TTS fallback blocked");
@@ -314,6 +327,59 @@ describe("ai-model-policy", () => {
     );
     expect(imagePolicy.model).toBe("gpt-image-custom");
     expect(audioPolicy.model).toBe("gpt-audio-custom");
+  });
+
+  it("asks gpt-6 chat models for no reasoning so temperature and tools stay valid", () => {
+    const liteChat = resolveModelPolicy({
+      plan: litePlanTier,
+      feature: "chat",
+    });
+    const proChat = resolveModelPolicy({ plan: proPlanTier, feature: "chat" });
+    const legacyOverride = resolveModelPolicy({
+      plan: proPlanTier,
+      feature: "chat",
+      modelOverrides: { chat: { pro: "gpt-4o-mini" } },
+    });
+    const gpt6Override = resolveModelPolicy({
+      plan: litePlanTier,
+      feature: "chat",
+      modelOverrides: { chat: { lite: "gpt-6-sol" } },
+    });
+
+    expect(liteChat.model).toBe("gpt-6-luna");
+    expect(liteChat.reasoningEffort).toBe("none");
+    expect(proChat.model).toBe("gpt-6-sol");
+    expect(proChat.reasoningEffort).toBe("none");
+    expect(legacyOverride.reasoningEffort).toBeUndefined();
+    expect(gpt6Override.reasoningEffort).toBe("none");
+  });
+
+  it("uses the GPT-Image-2.6 tiers for image generation", () => {
+    const liteImage = resolveModelPolicy({
+      plan: litePlanTier,
+      feature: "image_generation",
+    });
+    const proImage = resolveModelPolicy({
+      plan: proPlanTier,
+      feature: "image_generation",
+    });
+
+    expect(liteImage.model).toBe("gpt-image-2.6-flare");
+    expect(proImage.model).toBe("gpt-image-2.6-sunburst");
+    expect(proImage.fallbackModel).toBe("gpt-image-2.6-flare");
+  });
+
+  it("prices the replacement models", () => {
+    expect(
+      estimateModelCostCents({ model: "gpt-6-luna", tokensIn: 1_000_000 }),
+    ).toBe(10);
+    expect(
+      estimateModelCostCents({ model: "gpt-6-sol", tokensOut: 1_000_000 }),
+    ).toBe(1_000);
+    expect(estimateModelCostCents({ model: "gpt-image-2.6-flare" })).toBe(11);
+    expect(estimateModelCostCents({ model: "gpt-image-2.6-sunburst" })).toBe(
+      11,
+    );
   });
 
   it("estimates flat and token pricing in cents", () => {

@@ -58,6 +58,7 @@ export async function generateTitle(
       model: policy.model,
       messages: filteredMsgs as ChatCompletionMessageParam[],
       max_completion_tokens: policy.maxOutputTokens,
+      reasoning_effort: policy.reasoningEffort,
     });
     const requestMetric: AIRequestMetric = {
       requestType: "title",

@@ -8,8 +8,15 @@ interface TokenPricing {
   flatUsd?: number;
 }
 
+/**
+ * `none` keeps temperature and Chat Completions function calling available on
+ * reasoning models: gpt-6 Luna and Sol reject both at their default effort.
+ */
+type ModelReasoningEffort = "none";
+
 interface ModelCapability {
   isTtsOnly?: boolean;
+  reasoningEffort?: ModelReasoningEffort;
 }
 
 export type PlanTier = "lite" | "pro" | "premium";
@@ -84,6 +91,7 @@ export interface ResolvedModelPolicy {
   downgradeReasons: string[];
   hardBlocked: boolean;
   notes?: string;
+  reasoningEffort?: ModelReasoningEffort;
 }
 
 const PLAN_NAME_TO_TIER: Record<PlanName, PlanTier> = {
@@ -114,15 +122,21 @@ function createChatRule({
   };
 }
 
+const ECONOMY_CHAT_MODEL = "gpt-6-luna";
+const STANDARD_CHAT_MODEL = "gpt-6-sol";
+const EXPLICIT_PREMIUM_CHAT_MODEL = "gpt-5.4";
+// gpt-4o-mini-tts shuts down on 2027-01-06 and has no Speech API successor.
+const DEFAULT_TTS_MODEL = "gpt-4o-mini-tts";
+const FULL_AUDIO_MODEL = "gpt-audio-1.5";
+const LITE_IMAGE_MODEL = "gpt-image-2.6-flare";
+const PRO_PREMIUM_IMAGE_MODEL = "gpt-image-2.6-sunburst";
+
 const TITLE_POLICY_RULE: ModelPolicyRule = {
-  model: "gpt-4o-mini",
+  model: ECONOMY_CHAT_MODEL,
   maxInputTokens: 1_200,
   maxOutputTokens: 20,
   notes: "Always use the cheapest available model for title generation.",
 };
-const DEFAULT_TTS_MODEL = "gpt-4o-mini-tts";
-const LITE_IMAGE_MODEL = "gpt-image-1-mini";
-const PRO_PREMIUM_IMAGE_MODEL = "gpt-image-1.5";
 
 export const MODEL_POLICY_MATRIX = {
   lite: {
@@ -136,24 +150,24 @@ export const MODEL_POLICY_MATRIX = {
       defaultTaskClass: "standard",
       taskClasses: {
         simple: createChatRule({
-          model: "gpt-4o-mini",
-          fallbackModel: "gpt-4o-mini",
+          model: ECONOMY_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 32_000,
           maxOutputTokens: 4_096,
           notes:
             "Strict context compaction; downgrade only when a cheaper fallback is available.",
         }),
         standard: createChatRule({
-          model: "gpt-4o-mini",
-          fallbackModel: "gpt-4o-mini",
+          model: ECONOMY_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 64_000,
           maxOutputTokens: 8_192,
           notes:
             "Strict context compaction; downgrade only when a cheaper fallback is available.",
         }),
         complex: createChatRule({
-          model: "gpt-4o-mini",
-          fallbackModel: "gpt-4o-mini",
+          model: ECONOMY_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 128_000,
           maxOutputTokens: 16_384,
           notes:
@@ -167,7 +181,7 @@ export const MODEL_POLICY_MATRIX = {
         final: {
           model: LITE_IMAGE_MODEL,
           notes:
-            "Lite image generation uses the cost-optimized GPT Image tier.",
+            "Lite image generation uses the faster GPT-Image-2.6 Flare tier.",
         },
       },
     },
@@ -194,22 +208,22 @@ export const MODEL_POLICY_MATRIX = {
       defaultTaskClass: "standard",
       taskClasses: {
         simple: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 64_000,
           maxOutputTokens: 8_192,
           notes: "Simple Pro chat should favor the cheaper fallback tier.",
         }),
         standard: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 128_000,
           maxOutputTokens: 16_384,
           notes: "Downgrade on soft budget pressure, retries, or high latency.",
         }),
         complex: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 200_000,
           maxOutputTokens: 32_768,
           notes: "Downgrade on soft budget pressure, retries, or high latency.",
@@ -223,7 +237,7 @@ export const MODEL_POLICY_MATRIX = {
           model: PRO_PREMIUM_IMAGE_MODEL,
           fallbackModel: LITE_IMAGE_MODEL,
           notes:
-            "Downgrade for retries or budget pressure to the cheaper GPT Image tier.",
+            "Downgrade for retries or budget pressure to the faster Flare tier.",
         },
       },
     },
@@ -231,7 +245,7 @@ export const MODEL_POLICY_MATRIX = {
       defaultTaskClass: "final",
       taskClasses: {
         final: {
-          model: "gpt-audio-mini",
+          model: FULL_AUDIO_MODEL,
           fallbackModel: DEFAULT_TTS_MODEL,
           notes:
             "TTS-only fallback is allowed only for plain text-to-speech requests.",
@@ -250,28 +264,28 @@ export const MODEL_POLICY_MATRIX = {
       defaultTaskClass: "standard",
       taskClasses: {
         simple: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 128_000,
           maxOutputTokens: 16_384,
           notes:
-            "Premium simple chat defaults to gpt-4.1 and downgrades to gpt-4o-mini on retry/latency/budget pressure.",
+            "Premium simple chat defaults to gpt-6-sol and downgrades to gpt-6-luna on retry/latency/budget pressure.",
         }),
         standard: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 200_000,
           maxOutputTokens: 32_768,
           notes:
-            "Premium standard chat defaults to gpt-4.1 and downgrades to gpt-4o-mini on retry/latency/budget pressure.",
+            "Premium standard chat defaults to gpt-6-sol and downgrades to gpt-6-luna on retry/latency/budget pressure.",
         }),
         complex: createChatRule({
-          model: "gpt-4.1",
-          fallbackModel: "gpt-4o-mini",
+          model: STANDARD_CHAT_MODEL,
+          fallbackModel: ECONOMY_CHAT_MODEL,
           maxInputTokens: 500_000,
           maxOutputTokens: 32_768,
           notes:
-            "Premium complex chat defaults to gpt-4.1, downgrades to gpt-4o-mini, and only upgrades to gpt-5.4 when explicitly requested.",
+            "Premium complex chat defaults to gpt-6-sol, downgrades to gpt-6-luna, and only upgrades to gpt-5.4 when explicitly requested.",
         }),
       },
     },
@@ -290,8 +304,8 @@ export const MODEL_POLICY_MATRIX = {
       defaultTaskClass: "final",
       taskClasses: {
         final: {
-          model: "gpt-audio-mini",
-          fallbackModel: "gpt-audio-mini",
+          model: FULL_AUDIO_MODEL,
+          fallbackModel: FULL_AUDIO_MODEL,
           notes:
             "Premium uses the same verified full-audio model tier while keeping audio_in_out support.",
         },
@@ -301,32 +315,48 @@ export const MODEL_POLICY_MATRIX = {
 } as const satisfies PlanPolicyMatrix;
 
 const MODEL_PRICING: Record<string, TokenPricing> = {
+  [ECONOMY_CHAT_MODEL]: {
+    inputUsdPerMillion: 0.1,
+    outputUsdPerMillion: 0.5,
+  },
+  [STANDARD_CHAT_MODEL]: {
+    inputUsdPerMillion: 2,
+    outputUsdPerMillion: 10,
+  },
+  [EXPLICIT_PREMIUM_CHAT_MODEL]: {
+    inputUsdPerMillion: 2.5,
+    outputUsdPerMillion: 15,
+  },
+  [LITE_IMAGE_MODEL]: {
+    // ~3.3k-3.7k image output tokens per image at the default quality, $30 per 1M.
+    flatUsd: 0.11,
+  },
+  [PRO_PREMIUM_IMAGE_MODEL]: {
+    flatUsd: 0.11,
+  },
+  [FULL_AUDIO_MODEL]: {
+    inputUsdPerMillion: 32,
+    outputUsdPerMillion: 64,
+    // Token accounting intentionally uses blended text/audio estimates for the current verified tier.
+  },
+  // Retiring models stay priced while admin overrides saved before the migration still select them.
   "gpt-4o-mini": {
     inputUsdPerMillion: 0.15,
     outputUsdPerMillion: 0.6,
-  },
-  "gpt-4.1-nano": {
-    inputUsdPerMillion: 0.1,
-    outputUsdPerMillion: 0.4,
   },
   "gpt-4.1": {
     inputUsdPerMillion: 2,
     outputUsdPerMillion: 8,
   },
-  "gpt-5.4": {
-    inputUsdPerMillion: 2.5,
-    outputUsdPerMillion: 15,
-  },
-  [LITE_IMAGE_MODEL]: {
+  "gpt-image-1-mini": {
     flatUsd: 0.011,
   },
-  [PRO_PREMIUM_IMAGE_MODEL]: {
+  "gpt-image-1.5": {
     flatUsd: 0.034,
   },
   "gpt-audio-mini": {
     inputUsdPerMillion: 10,
     outputUsdPerMillion: 20,
-    // Token accounting intentionally uses blended text/audio estimates for the current verified tier.
   },
   [DEFAULT_TTS_MODEL]: {
     inputUsdPerMillion: 0.6,
@@ -336,6 +366,12 @@ const MODEL_PRICING: Record<string, TokenPricing> = {
 };
 
 const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
+  [ECONOMY_CHAT_MODEL]: {
+    reasoningEffort: "none",
+  },
+  [STANDARD_CHAT_MODEL]: {
+    reasoningEffort: "none",
+  },
   [LITE_IMAGE_MODEL]: {},
   [PRO_PREMIUM_IMAGE_MODEL]: {},
   [DEFAULT_TTS_MODEL]: {
@@ -425,6 +461,7 @@ function createResolvedPolicy({
     model,
     fallbackModel,
     isTtsOnly: isTtsOnlyModel(model),
+    reasoningEffort: MODEL_CAPABILITIES[model]?.reasoningEffort,
     feature,
     plan,
     taskClass,
@@ -577,8 +614,8 @@ export function resolveModelPolicy(
     taskClass === "complex" &&
     input.explicitPremium
   ) {
-    model = "gpt-5.4";
-    fallbackModel = "gpt-4.1";
+    model = EXPLICIT_PREMIUM_CHAT_MODEL;
+    fallbackModel = STANDARD_CHAT_MODEL;
     notes = joinNotes(
       notes,
       "Explicit premium complex chat request upgraded to gpt-5.4.",

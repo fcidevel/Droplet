@@ -63,9 +63,12 @@ skills-lock.json
 .env.codex
 
 # internal planning docs (not part of the public release)
+AGENTS.md
+CLAUDE.md
 TODO.md
 ThePlan.md
 DONE.md
+SPEC.md
  
 
 # stray local logs

@@ -5,7 +5,7 @@
 
 ![Droplet](public/images/lp-hero-image-480x480.png)
 
-_Smart AI Assistant powered by OpenAI_
+_Your AI assistant, your way_
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://droplet.jwd-apps.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
@@ -15,10 +15,6 @@ _Smart AI Assistant powered by OpenAI_
 </div>
 
 ---
-
-
-
-**Your AI assistant, your way.**
 
 Droplet is a smart AI chatbot with 6 specialized personas — each with its own personality, expertise, and conversational style. Choose the assistant that fits your need, and start a real conversation.
 

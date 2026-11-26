@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint .",
     "knip": "knip",
+    "prepare": "git config core.hooksPath .githooks || exit 0",
     "test:live:audio-models": "node scripts/live-test-audio-models.mjs",
     "test:live:image-models": "node scripts/live-test-image-models.mjs",
     "migrate:removed-personas": "node scripts/migrate-removed-personas.mjs",

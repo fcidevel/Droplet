@@ -11,24 +11,8 @@ import serializeForClient from "@/lib/utils/serialize-for-client";
 import { nonEmptyStringSchema } from "@/lib/utils/validation-schemas";
 import { z } from "zod";
 
-const billingCycleSchema = z.enum(["Monthly", "Yearly"]);
-const planNameSchema = z.enum(["Lite", "Pro", "Premium"]);
-
-const updateUserPlanSchema = z
-  .object({
-    id: z.union([z.number(), z.string()]).optional(),
-    name: planNameSchema.optional(),
-    amount: z.number().optional(),
-    billing: billingCycleSchema.optional(),
-    startedOn: z.date().optional(),
-    expiresOn: z.date().optional(),
-    stripeId: z.string().optional(),
-    imageGenerations: z.number().optional(),
-    audioGenerations: z.number().optional(),
-    usagePeriodStart: z.date().optional(),
-  })
-  .strict();
-
+// Profile fields only. The plan and its usage counters are written by the billing webhooks and
+// the AI route on the server, never by this browser-callable action.
 const updateUserSchema = z
   .object({
     username: z.string().optional(),
@@ -37,7 +21,6 @@ const updateUserSchema = z
     lastName: z.string().optional(),
     userimg: z.string().optional(),
     updatedAt: z.date().optional(),
-    plan: updateUserPlanSchema.optional(),
   })
   .strict();
 
@@ -58,9 +41,24 @@ export async function updateUser(clerkId: string, user: UpdateUserParams) {
 
     await connectToDatabase();
 
+    // The email is owned by Clerk, which verifies it, and the Clerk webhook syncs it here. The
+    // profile editor always sends the current address; a different one is refused, not added.
+    const { email: submittedEmail, ...profileFields } = parsedUser.data;
+    if (submittedEmail !== undefined) {
+      const storedUser = (await User.findOne(
+        { clerkId: parsedClerkId.data },
+        "email",
+        { lean: true },
+      )) as { email?: string } | null;
+      const storedEmail = storedUser?.email?.trim().toLowerCase();
+      if (storedEmail !== submittedEmail.trim().toLowerCase()) {
+        throw new Error("Invalid email change.");
+      }
+    }
+
     const updatedUser = await User.findOneAndUpdate(
       { clerkId: parsedClerkId.data },
-      parsedUser.data as UpdateUserInput,
+      profileFields as UpdateUserInput,
       {
         returnDocument: "after",
         strict: true,
@@ -101,21 +99,6 @@ export async function updateUser(clerkId: string, user: UpdateUserParams) {
       } catch (error) {
         process.stderr.write(
           `[user.actions] updateUser Clerk profile sync failed for ${parsedClerkId.data}: ${error instanceof Error ? error.message : "unknown"}\n`,
-        );
-      }
-    }
-
-    if (typeof parsedUser.data.email === "string") {
-      try {
-        await client.emailAddresses.createEmailAddress({
-          userId: parsedClerkId.data,
-          emailAddress: parsedUser.data.email,
-          verified: true,
-          primary: true,
-        });
-      } catch (error) {
-        process.stderr.write(
-          `[user.actions] updateUser Clerk email sync failed for ${parsedClerkId.data}: ${error instanceof Error ? error.message : "unknown"}\n`,
         );
       }
     }

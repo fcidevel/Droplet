@@ -16,6 +16,7 @@ const {
   deleteUserCascadeMock,
   deleteClerkUserMock,
   updateClerkUserMock,
+  createClerkEmailAddressMock,
 } = vi.hoisted(() => ({
   userFindOneMock: vi.fn(),
   userFindOneAndUpdateMock: vi.fn(),
@@ -23,6 +24,7 @@ const {
   deleteUserCascadeMock: vi.fn(),
   deleteClerkUserMock: vi.fn(),
   updateClerkUserMock: vi.fn(),
+  createClerkEmailAddressMock: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -31,6 +33,9 @@ vi.mock("@clerk/nextjs/server", () => ({
     users: {
       deleteUser: deleteClerkUserMock,
       updateUser: updateClerkUserMock,
+    },
+    emailAddresses: {
+      createEmailAddress: createClerkEmailAddressMock,
     },
   })),
 }));
@@ -296,6 +301,58 @@ describe("user.actions", () => {
 
       expect(connectToDatabase).not.toHaveBeenCalled();
       expect(userFindOneAndUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects plan changes, so a user cannot upgrade or reset their own usage", async () => {
+      await expect(
+        updateUser("user_123", {
+          updatedAt: new Date("2026-03-25T00:00:00.000Z"),
+          plan: {
+            name: "Premium",
+            imageGenerations: 0,
+            audioGenerations: 0,
+            usagePeriodStart: new Date("2026-03-25T00:00:00.000Z"),
+          },
+        } as Parameters<typeof updateUser>[1]),
+      ).rejects.toThrow("Invalid user payload.");
+
+      expect(connectToDatabase).not.toHaveBeenCalled();
+      expect(userFindOneAndUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it("refuses an email change without adding the address to Clerk or writing it", async () => {
+      userFindOneMock.mockResolvedValue({ email: "alice@example.com" });
+
+      await expect(
+        updateUser("user_123", {
+          email: "someone-else@example.com",
+          updatedAt: new Date("2026-03-25T00:00:00.000Z"),
+        }),
+      ).rejects.toThrow("Invalid email change.");
+
+      expect(createClerkEmailAddressMock).not.toHaveBeenCalled();
+      expect(userFindOneAndUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it("accepts the unchanged email the profile editor always sends, without creating a Clerk address", async () => {
+      userFindOneMock.mockResolvedValue({ email: "alice@example.com" });
+      userFindOneAndUpdateMock.mockResolvedValue(
+        createTestUser({ clerkId: "user_123", firstName: "Alice" }),
+      );
+
+      const response = await updateUser("user_123", {
+        email: "Alice@Example.com",
+        firstName: "Alice",
+        updatedAt: new Date("2026-03-25T00:00:00.000Z"),
+      });
+
+      expect(response).toEqual(expect.objectContaining({ status: 200 }));
+      expect(createClerkEmailAddressMock).not.toHaveBeenCalled();
+      expect(userFindOneAndUpdateMock).toHaveBeenCalledWith(
+        { clerkId: "user_123" },
+        expect.not.objectContaining({ email: expect.anything() }),
+        expect.anything(),
+      );
     });
   });
 
